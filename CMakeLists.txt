@@ -2,8 +2,10 @@
 # If you use CMake features from higher versions, update this to match.
 cmake_minimum_required(VERSION 3.21)
 
+set(NAME SimpleGripSwitch CACHE STRING "")
+
 # Set your project name. This will be the name of your SKSE .dll file.
-project(UsingLogFiles VERSION 0.0.1 LANGUAGES CXX)
+project(${NAME} VERSION 0.0.1 LANGUAGES CXX)
 
 #
 # YOU DO NOT NEED TO EDIT ANYTHING BELOW HERE
@@ -38,11 +40,32 @@ add_commonlibsse_plugin(${PROJECT_NAME} SOURCES plugin.cpp) # <--- specifies plu
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_23) # <--- use C++23 standard
 target_precompile_headers(${PROJECT_NAME} PRIVATE PCH.h) # <--- PCH.h is required!
 
+include(cmake/headerlist.cmake)
+include(cmake/sourcelist.cmake)
+
+source_group(
+	TREE
+		${CMAKE_CURRENT_SOURCE_DIR}
+	FILES
+		${headers}
+		${sources}
+)
+
 # When your SKSE .dll is compiled, this will automatically copy the .dll into your mods folder.
 # Only works if you configure DEPLOY_ROOT above (or set the SKYRIM_MODS_FOLDER environment variable)
 if(DEFINED OUTPUT_FOLDER)
     # If you specify an <OUTPUT_FOLDER> (including via environment variables)
     # then we'll copy your mod files into Skyrim or a mod manager for you!
+
+    target_sources(${PROJECT_NAME} PRIVATE ${headers} ${sources})
+
+    target_include_directories(
+        ${PROJECT_NAME} 
+        PRIVATE 
+            ${CMAKE_CURRENT_SOURCE_DIR}/include
+            ${CMAKE_CURRENT_SOURCE_DIR}/src
+            ${SIMPLEINI_INCLUDE_DIRS}
+    )
 
     # Copy the SKSE plugin .dll files into the SKSE/Plugins/ folder
     set(DLL_FOLDER "${OUTPUT_FOLDER}/SKSE/Plugins")

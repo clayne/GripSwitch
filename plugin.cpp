@@ -1,44 +1,33 @@
-#include "logger.h"  // <--- you can simply copy logger.h into your projects
-                     //      and then call SetupLog() in your SKSE plugin
-                     //      and start using logger::info() logger::trace() etc!
+#include "src/SimpleGripSwitch.h"
+
+void OnInit(SKSE::MessagingInterface::Message* msg) {
+    switch (msg->type) {
+        case SKSE::MessagingInterface::kPostPostLoad:
+            logger::info("SGS: Data loaded");
+            break;
+    }
+}
+
+void InitLog() {
+    auto logsFolder = SKSE::log::log_directory();
+    if (!logsFolder) SKSE::stl::report_and_fail("SKSE log_directory not provided, logs disabled.");
+    auto pluginName = SKSE::PluginDeclaration::GetSingleton()->GetName();
+    auto logFilePath = *logsFolder / std::format("{}.log", pluginName);
+    auto fileLoggerPtr = std::make_shared<spdlog::sinks::basic_file_sink_mt>(logFilePath.string(), true);
+    auto loggerPtr = std::make_shared<spdlog::logger>("log", std::move(fileLoggerPtr));
+    spdlog::set_default_logger(std::move(loggerPtr));
+    spdlog::set_level(spdlog::level::trace);
+    spdlog::flush_on(spdlog::level::trace);
+}
 
 SKSEPluginLoad(const SKSE::LoadInterface *skse) {
     SKSE::Init(skse);
 
-    // Setup logging (e.g. using spdlog)
-    SetupLog();
+    InitLog();
 
-    // Note: the `spdlog` and `SKSE::log` examples below are for demonstration.
-    //       I recommend you always use `logger`, e.g. logger::info()
-
-    // Now log something!
-    spdlog::info("Wassup, hi from info!");
-    spdlog::error("Oh noes! Something bad with error code {} happened!", 69);
-
-    // Here is what the lines will look like in the log:
-    // [2022-12-11 12:52:35.797] [plugin-log] [info] Wassup, hi from info!
-    // [2022-12-11 12:52:35.798] [plugin-log] [error] Oh noes! Something bad with error code 69 happened!
-
-    // Cool, cool.
-    //
-    // Now if you want to be more SKSE-ish, you should use SKSE::log (which just calls spdlog)
-    SKSE::log::info("SKSE log info");
-    SKSE::log::error("SKSE log error {}", 123);
-
-    // SKSE::log uses spdlog but it adds a super useful prefix
-    // which shows the actual line of code which the log was sent from!
-    // Here is what the lines will look like in the log:
-    // [2022-12-11 12:52:35.798] [plugin-log] [info] [plugin.cpp:52] SKSE log info
-    // [2022-12-11 12:52:35.798] [plugin-log] [error] [plugin.cpp:53] SKSE log error 123
-    // [2022-12-11 12:52:35.798] [plugin-log] [trace] [plugin.cpp:58] Logged using a nice shorthand for SKSE::log
-    // The [plugin.cpp:<line>] lines are pretty rad, amiright?
-
-    // Maybe, even better, use your own namespace (e.g. by aliasing SKSE::log)
-    // And this way you can easily swap our your logger to be whatever you want in the future
-    // so long as you provide this same interface.
-    logger::trace("Logged using a nice shorthand for SKSE::log");
-
-    // That's all, folks! Happy Modding!
+    SKSE::GetMessagingInterface()->RegisterListener(OnInit);
+    auto* eventSource = RE::ScriptEventSourceHolder::GetSingleton();
+    eventSource->AddEventSink<RE::TESEquipEvent>(SimpleGripSwitch::GetSingleton());
 
     return true;
 }
